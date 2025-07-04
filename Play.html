@@ -99,6 +99,162 @@
       --input-background: rgba(24, 27, 42, 0.8);
       --outline-color: #06b6d4;
     }
+    
+    /* New Game Frame Features */
+    .play-stats {
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #06b6d4;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+    }
+    
+    .pause-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      backdrop-filter: blur(10px);
+    }
+    
+    .pause-overlay.hidden {
+      display: none;
+    }
+    
+    .pause-content {
+      text-align: center;
+      color: white;
+    }
+    
+    .pause-title {
+      font-size: 2.5rem;
+      font-weight: 900;
+      color: #06b6d4;
+      margin-bottom: 1rem;
+      text-shadow: 0 0 20px rgba(6, 182, 212, 0.5);
+    }
+    
+    .pause-buttons {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+    }
+    
+    .pause-btn {
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      border: none;
+      font-size: 1rem;
+    }
+    
+    .pause-btn.primary {
+      background: linear-gradient(135deg, #06b6d4, #3b82f6);
+      color: black;
+    }
+    
+    .pause-btn.primary:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(6, 182, 212, 0.4);
+    }
+    
+    .pause-btn.secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .pause-btn.secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .inactivity-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      backdrop-filter: blur(5px);
+      transition: opacity 0.5s ease;
+    }
+    
+    .inactivity-overlay.hidden {
+      display: none;
+    }
+    
+    .inactivity-content {
+      text-align: center;
+      color: white;
+      animation: pulse 2s infinite;
+    }
+    
+    .inactivity-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #06b6d4;
+      margin-bottom: 0.5rem;
+    }
+    
+    .game-frame-blurred {
+      filter: blur(3px);
+      transition: filter 0.5s ease;
+    }
+    
+    .keyboard-shortcuts {
+      position: absolute;
+      bottom: 4px;
+      right: 4px;
+      background: rgba(0, 0, 0, 0.8);
+      color: #06b6d4;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 10px;
+      z-index: 100;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      opacity: 0.7;
+      transition: opacity 0.3s ease;
+    }
+    
+    .keyboard-shortcuts:hover {
+      opacity: 1;
+    }
+    
+    .rate-limit-warning {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.6; }
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-[#0f0f23] via-[#1a1a2e] to-[#16213e] min-h-screen text-white font-[Inter]">
@@ -178,6 +334,65 @@
     <div id="gameFrameContainer" class="rounded-2xl shadow-2xl bg-[#181b2a] border border-cyan-600/30 overflow-hidden mt-8 hidden">
       <div class="relative aspect-video bg-black">
         <iframe id="gameFrameEmbed" src="" class="w-full h-full" frameborder="0" allowfullscreen allow="fullscreen"></iframe>
+        
+        <!-- Play Stats Display -->
+        <div id="playStats" class="play-stats">
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center gap-2">
+              <i class='bx bx-play-circle text-sm'></i>
+              <span id="playCount">0 plays</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <i class='bx bx-time text-sm'></i>
+              <span id="playTimer">00:00</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Keyboard Shortcuts Display -->
+        <div id="keyboardShortcuts" class="keyboard-shortcuts">
+          <div class="text-xs">
+            <div><strong>P</strong> Play/Pause</div>
+            <div><strong>R</strong> Restart</div>
+            <div><strong>F</strong> Fullscreen</div>
+            <div><strong>M</strong> Mute</div>
+          </div>
+        </div>
+        
+        <!-- Pause Overlay -->
+        <div id="pauseOverlay" class="pause-overlay hidden">
+          <div class="pause-content">
+            <div class="pause-title">⏸️ PAUSED</div>
+            <p class="text-cyan-200 mb-2">Game is currently paused</p>
+            <p class="text-sm text-cyan-300/70">Press P or Spacebar to resume</p>
+            <div class="pause-buttons">
+              <button id="resumeBtn" class="pause-btn primary">
+                <i class='bx bx-play mr-2'></i>
+                Resume Game
+              </button>
+              <button id="restartBtn" class="pause-btn secondary">
+                <i class='bx bx-refresh mr-2'></i>
+                Restart
+              </button>
+              <button id="exitGameBtn" class="pause-btn secondary">
+                <i class='bx bx-exit mr-2'></i>
+                Exit Game
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Inactivity Overlay -->
+        <div id="inactivityOverlay" class="inactivity-overlay hidden">
+          <div class="inactivity-content">
+            <div class="inactivity-title">🌫️ Inactive</div>
+            <p class="text-cyan-200">Click or press any key to continue</p>
+            <div class="mt-4 text-xs text-cyan-300/70">
+              <i class='bx bx-mouse text-lg animate-bounce'></i>
+            </div>
+          </div>
+        </div>
+        
         <div class="absolute top-4 right-4 flex gap-2 z-10">
           <button id="likeBtn" class="w-10 h-10 bg-white/10 hover:bg-cyan-500/80 text-white rounded-full flex items-center justify-center transition" title="Like">
             <i class='bx bx-like text-xl'></i>
@@ -306,6 +521,12 @@
               >
                 Cancel
               </button>
+            </div>
+            
+            <!-- Rate Limit Warning -->
+            <div id="rateLimitWarning" class="rate-limit-warning hidden">
+              <i class='bx bx-error-circle mr-2'></i>
+              <span id="rateLimitText">Please wait before posting another comment</span>
             </div>
           </div>
 
@@ -1086,6 +1307,405 @@
     window.submitReply = submitReply;
     window.loadComments = loadComments;
 
+    // --- NEW GAME FRAME FEATURES ---
+    
+    // Game state management
+    let gameState = {
+      playCount: 0,
+      sessionStartTime: null,
+      sessionDuration: 0,
+      isPaused: false,
+      isInactive: false,
+      lastActivity: Date.now(),
+      userCommentTimes: [], // Track comment timestamps for rate limiting
+      keyboardShortcutsEnabled: true,
+      activityTimer: null,
+      playTimer: null
+    };
+
+    // Play Count & Timer System
+    async function initializePlayTracking(gameId, userId) {
+      if (!gameId || !userId) return;
+      
+      try {
+        // Get current play count from Firebase
+        const gameStatsRef = db.collection("games").doc(gameId).collection("stats").doc("general");
+        const userStatsRef = db.collection("users").doc(userId);
+        
+        const [gameStatsDoc, userStatsDoc] = await Promise.all([
+          gameStatsRef.get(),
+          userStatsRef.get()
+        ]);
+        
+        const gameStats = gameStatsDoc.exists ? gameStatsDoc.data() : {};
+        const userStats = userStatsDoc.exists ? userStatsDoc.data() : {};
+        
+        // Update play count
+        const newPlayCount = (gameStats.totalPlays || 0) + 1;
+        gameState.playCount = newPlayCount;
+        
+        // Update Firebase
+        await Promise.all([
+          gameStatsRef.set({ totalPlays: newPlayCount }, { merge: true }),
+          userStatsRef.set({ 
+            [`gameStats.${gameId}.plays`]: firebase.firestore.FieldValue.increment(1),
+            [`gameStats.${gameId}.lastPlayed`]: firebase.firestore.FieldValue.serverTimestamp()
+          }, { merge: true })
+        ]);
+        
+        // Start session tracking
+        gameState.sessionStartTime = Date.now();
+        startPlayTimer();
+        updatePlayStatsDisplay();
+        
+      } catch (error) {
+        console.error("Error initializing play tracking:", error);
+        // Fallback to local tracking
+        gameState.playCount = parseInt(localStorage.getItem(`playCount_${gameId}`) || '0') + 1;
+        localStorage.setItem(`playCount_${gameId}`, gameState.playCount.toString());
+        gameState.sessionStartTime = Date.now();
+        startPlayTimer();
+        updatePlayStatsDisplay();
+      }
+    }
+
+    function startPlayTimer() {
+      if (gameState.playTimer) clearInterval(gameState.playTimer);
+      
+      gameState.playTimer = setInterval(() => {
+        if (!gameState.isPaused && gameState.sessionStartTime) {
+          gameState.sessionDuration = Date.now() - gameState.sessionStartTime;
+          updatePlayStatsDisplay();
+        }
+      }, 1000);
+    }
+
+    function updatePlayStatsDisplay() {
+      const playCountEl = document.getElementById('playCount');
+      const playTimerEl = document.getElementById('playTimer');
+      
+      if (playCountEl) {
+        playCountEl.textContent = `${gameState.playCount} play${gameState.playCount !== 1 ? 's' : ''}`;
+      }
+      
+      if (playTimerEl) {
+        const minutes = Math.floor(gameState.sessionDuration / 60000);
+        const seconds = Math.floor((gameState.sessionDuration % 60000) / 1000);
+        playTimerEl.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+      }
+    }
+
+    // Comment Rate Limiting System
+    function checkCommentRateLimit(userId) {
+      const now = Date.now();
+      const tenMinutesAgo = now - (10 * 60 * 1000); // 10 minutes in milliseconds
+      
+      // Get user's comment times from local storage for this session
+      const userCommentKey = `commentTimes_${userId}_${currentGameId}`;
+      const storedTimes = JSON.parse(localStorage.getItem(userCommentKey) || '[]');
+      
+      // Filter to only recent comments (within 10 minutes)
+      const recentComments = storedTimes.filter(time => time > tenMinutesAgo);
+      
+      // Update stored times
+      localStorage.setItem(userCommentKey, JSON.stringify(recentComments));
+      
+      return {
+        canComment: recentComments.length < 2,
+        commentsInPeriod: recentComments.length,
+        timeUntilNext: recentComments.length >= 2 ? Math.ceil((recentComments[0] + (10 * 60 * 1000) - now) / 1000) : 0
+      };
+    }
+
+    function recordCommentTime(userId) {
+      const userCommentKey = `commentTimes_${userId}_${currentGameId}`;
+      const storedTimes = JSON.parse(localStorage.getItem(userCommentKey) || '[]');
+      storedTimes.push(Date.now());
+      localStorage.setItem(userCommentKey, JSON.stringify(storedTimes));
+    }
+
+    function showRateLimitWarning(timeUntilNext) {
+      const warningEl = document.getElementById('rateLimitWarning');
+      const textEl = document.getElementById('rateLimitText');
+      
+      if (warningEl && textEl) {
+        const minutes = Math.floor(timeUntilNext / 60);
+        const seconds = timeUntilNext % 60;
+        
+        if (minutes > 0) {
+          textEl.textContent = `Rate limit exceeded. Please wait ${minutes}m ${seconds}s before posting another comment.`;
+        } else {
+          textEl.textContent = `Rate limit exceeded. Please wait ${seconds}s before posting another comment.`;
+        }
+        
+        warningEl.classList.remove('hidden');
+        
+        // Auto-hide after the wait time
+        setTimeout(() => {
+          warningEl.classList.add('hidden');
+        }, timeUntilNext * 1000);
+      }
+    }
+
+    // Enhanced submit comment with rate limiting
+    async function submitCommentWithRateLimit() {
+      const user = firebase.auth().currentUser;
+      if (!user) {
+        alert('Please sign in to comment');
+        return;
+      }
+      
+      // Check rate limit
+      const rateLimitCheck = checkCommentRateLimit(user.uid);
+      if (!rateLimitCheck.canComment) {
+        showRateLimitWarning(rateLimitCheck.timeUntilNext);
+        return;
+      }
+      
+      // Proceed with normal comment submission
+      await submitComment();
+      
+      // Record this comment time
+      recordCommentTime(user.uid);
+    }
+
+    // Keyboard Shortcuts System
+    function initializeKeyboardShortcuts() {
+      document.addEventListener('keydown', handleKeyboardShortcut);
+      document.addEventListener('keyup', handleKeyboardShortcut);
+    }
+
+    function handleKeyboardShortcut(event) {
+      if (!gameState.keyboardShortcutsEnabled) return;
+      if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return;
+      
+      // Reset inactivity on any key press
+      resetInactivityTimer();
+      
+      if (event.type === 'keydown') {
+        switch (event.key.toLowerCase()) {
+          case 'p':
+          case ' ': // Spacebar
+            event.preventDefault();
+            togglePause();
+            break;
+          case 'r':
+            event.preventDefault();
+            restartGame();
+            break;
+          case 'f':
+            event.preventDefault();
+            toggleFullscreen();
+            break;
+          case 'm':
+            event.preventDefault();
+            toggleMute();
+            break;
+          case 'escape':
+            if (gameState.isPaused) {
+              event.preventDefault();
+              resumeGame();
+            }
+            break;
+        }
+      }
+    }
+
+    // Pause/Resume System
+    function togglePause() {
+      if (gameState.isPaused) {
+        resumeGame();
+      } else {
+        pauseGame();
+      }
+    }
+
+    function pauseGame() {
+      gameState.isPaused = true;
+      const pauseOverlay = document.getElementById('pauseOverlay');
+      if (pauseOverlay) {
+        pauseOverlay.classList.remove('hidden');
+      }
+      
+      // Pause the timer
+      if (gameState.playTimer) {
+        clearInterval(gameState.playTimer);
+      }
+    }
+
+    function resumeGame() {
+      gameState.isPaused = false;
+      const pauseOverlay = document.getElementById('pauseOverlay');
+      if (pauseOverlay) {
+        pauseOverlay.classList.add('hidden');
+      }
+      
+      // Resume the timer
+      startPlayTimer();
+      resetInactivityTimer();
+    }
+
+    function restartGame() {
+      const iframe = document.getElementById('gameFrameEmbed');
+      if (iframe && iframe.src) {
+        iframe.src = iframe.src; // Reload the iframe
+        resumeGame();
+        
+        // Reset timer but keep play count
+        gameState.sessionStartTime = Date.now();
+        gameState.sessionDuration = 0;
+        updatePlayStatsDisplay();
+      }
+    }
+
+    function exitGame() {
+      // Go back to game info screen
+      document.getElementById('gameFrameContainer').classList.add('hidden');
+      document.getElementById('gameInfoHolder').classList.remove('hidden');
+      
+      // Clean up timers
+      if (gameState.playTimer) clearInterval(gameState.playTimer);
+      if (gameState.activityTimer) clearInterval(gameState.activityTimer);
+      
+      gameState.isPaused = false;
+      gameState.isInactive = false;
+    }
+
+    function toggleFullscreen() {
+      const iframe = document.getElementById('gameFrameEmbed');
+      if (iframe) {
+        requestFullScreen(iframe);
+      }
+    }
+
+    function toggleMute() {
+      // This would need to communicate with the iframe content
+      // For now, we'll just show a notification
+      showTemporaryNotification('🔇 Mute toggle (depends on game support)');
+    }
+
+    // Inactivity Detection System
+    function initializeInactivityDetection() {
+      const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+      
+      events.forEach(event => {
+        document.addEventListener(event, resetInactivityTimer, true);
+      });
+      
+      resetInactivityTimer();
+    }
+
+    function resetInactivityTimer() {
+      gameState.lastActivity = Date.now();
+      
+      // Hide inactivity overlay if it's showing
+      if (gameState.isInactive) {
+        hideInactivityOverlay();
+      }
+      
+      // Clear existing timer
+      if (gameState.activityTimer) {
+        clearTimeout(gameState.activityTimer);
+      }
+      
+      // Set new timer for 20 seconds
+      gameState.activityTimer = setTimeout(() => {
+        showInactivityOverlay();
+      }, 20000);
+    }
+
+    function showInactivityOverlay() {
+      if (gameState.isPaused) return; // Don't show if already paused
+      
+      gameState.isInactive = true;
+      const overlay = document.getElementById('inactivityOverlay');
+      const iframe = document.getElementById('gameFrameEmbed');
+      
+      if (overlay) {
+        overlay.classList.remove('hidden');
+      }
+      
+      if (iframe) {
+        iframe.classList.add('game-frame-blurred');
+      }
+    }
+
+    function hideInactivityOverlay() {
+      gameState.isInactive = false;
+      const overlay = document.getElementById('inactivityOverlay');
+      const iframe = document.getElementById('gameFrameEmbed');
+      
+      if (overlay) {
+        overlay.classList.add('hidden');
+      }
+      
+      if (iframe) {
+        iframe.classList.remove('game-frame-blurred');
+      }
+    }
+
+    // Utility Functions
+    function showTemporaryNotification(message) {
+      // Create a temporary notification
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-cyan-500 text-black px-4 py-2 rounded-lg font-semibold z-[1000] opacity-0 transition-opacity duration-300';
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      // Show notification
+      setTimeout(() => notification.classList.replace('opacity-0', 'opacity-100'), 100);
+      
+      // Hide and remove notification
+      setTimeout(() => {
+        notification.classList.replace('opacity-100', 'opacity-0');
+        setTimeout(() => document.body.removeChild(notification), 300);
+      }, 2000);
+    }
+
+    // Initialize all game frame features
+    function initializeGameFrameFeatures(gameId, userId) {
+      // Initialize play tracking
+      initializePlayTracking(gameId, userId);
+      
+      // Set up keyboard shortcuts
+      initializeKeyboardShortcuts();
+      
+      // Set up inactivity detection
+      initializeInactivityDetection();
+      
+      // Set up pause overlay button events
+      const resumeBtn = document.getElementById('resumeBtn');
+      const restartBtn = document.getElementById('restartBtn');
+      const exitGameBtn = document.getElementById('exitGameBtn');
+      
+      if (resumeBtn) resumeBtn.addEventListener('click', resumeGame);
+      if (restartBtn) restartBtn.addEventListener('click', restartGame);
+      if (exitGameBtn) exitGameBtn.addEventListener('click', exitGame);
+      
+      // Set up inactivity overlay click to resume
+      const inactivityOverlay = document.getElementById('inactivityOverlay');
+      if (inactivityOverlay) {
+        inactivityOverlay.addEventListener('click', resetInactivityTimer);
+      }
+    }
+
+    // Cleanup function
+    function cleanupGameFrameFeatures() {
+      if (gameState.playTimer) clearInterval(gameState.playTimer);
+      if (gameState.activityTimer) clearTimeout(gameState.activityTimer);
+      document.removeEventListener('keydown', handleKeyboardShortcut);
+      document.removeEventListener('keyup', handleKeyboardShortcut);
+    }
+
+    // Expose new functions to global scope
+    window.togglePause = togglePause;
+    window.resumeGame = resumeGame;
+    window.restartGame = restartGame;
+    window.exitGame = exitGame;
+    window.initializeGameFrameFeatures = initializeGameFrameFeatures;
+    window.cleanupGameFrameFeatures = cleanupGameFrameFeatures;
+    window.submitCommentWithRateLimit = submitCommentWithRateLimit;
+
     // Render comments
     function renderComments() {
       const container = document.getElementById('commentsList');
@@ -1365,6 +1985,9 @@
           // Initialize comment system event listeners
           initializeCommentSystem();
           
+          // Initialize new game frame features
+          initializeGameFrameFeatures(currentGameId, user.uid);
+          
           let lists = await getUserGameLists(user.uid);
           setButtonActive(document.getElementById('likeBtn'), lists.likedGames?.includes(currentGameId));
           setButtonActive(document.getElementById('favBtn'), lists.favoriteGames?.includes(currentGameId), 'bg-pink-600/80');
@@ -1466,7 +2089,7 @@
       }
       
       if (submitCommentBtn) {
-        submitCommentBtn.addEventListener('click', submitComment);
+        submitCommentBtn.addEventListener('click', submitCommentWithRateLimit);
       }
       
       if (cancelComment) {
@@ -1527,6 +2150,13 @@
       // Set up form event listeners with a slight delay to ensure DOM elements exist
       setTimeout(setupCommentEventListeners, 100);
     }
+  </script>
+
+  <!-- Add cleanup on page unload -->
+  <script>
+    window.addEventListener('beforeunload', () => {
+      cleanupGameFrameFeatures();
+    });
   </script>
 </body>
 </html>
