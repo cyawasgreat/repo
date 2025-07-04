@@ -10,6 +10,7 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@^1/index.js"></script>
   <style>
     .loader {
       border: 8px solid #16213e;
@@ -28,6 +29,75 @@
       background: #22d3ee22;
       color: #06b6d4 !important;
       border-color: #06b6d4 !important;
+    }
+    /* Comment section styles */
+    .comment-item {
+      transition: all 0.3s ease;
+    }
+    .comment-item:hover {
+      background: rgba(6, 182, 212, 0.05);
+    }
+    .reply-item {
+      border-left: 2px solid #06b6d4;
+      margin-left: 1rem;
+      padding-left: 1rem;
+    }
+    .reaction-picker {
+      position: absolute;
+      z-index: 1000;
+      background: #232445;
+      border: 1px solid #06b6d4;
+      border-radius: 8px;
+      padding: 8px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .reaction-button {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 16px;
+      font-size: 12px;
+      background: rgba(6, 182, 212, 0.1);
+      color: #06b6d4;
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      transition: all 0.2s ease;
+    }
+    .reaction-button:hover {
+      background: rgba(6, 182, 212, 0.2);
+      transform: scale(1.05);
+    }
+    .reaction-button.reacted {
+      background: rgba(6, 182, 212, 0.3);
+      color: #22d3ee;
+    }
+    .comment-stars {
+      color: #fbbf24;
+    }
+    .comment-textarea {
+      background: rgba(24, 27, 42, 0.8);
+      border: 1px solid rgba(6, 182, 212, 0.3);
+      color: white;
+      border-radius: 8px;
+      padding: 12px;
+      resize: vertical;
+      min-height: 80px;
+    }
+    .comment-textarea:focus {
+      outline: none;
+      border-color: #06b6d4;
+      box-shadow: 0 0 0 2px rgba(6, 182, 212, 0.2);
+    }
+    emoji-picker {
+      --background: #232445;
+      --border-color: #06b6d4;
+      --button-active-background: rgba(6, 182, 212, 0.2);
+      --button-hover-background: rgba(6, 182, 212, 0.1);
+      --indicator-color: #06b6d4;
+      --input-border-color: rgba(6, 182, 212, 0.3);
+      --input-font-color: white;
+      --input-background: rgba(24, 27, 42, 0.8);
+      --outline-color: #06b6d4;
     }
   </style>
 </head>
@@ -164,6 +234,148 @@
           </table>
         </div>
       </div>
+
+      <!-- Comments Section -->
+      <div id="commentsSection" class="mt-8 mx-6 mb-8">
+        <div class="bg-[#181b2a] border border-cyan-600/30 rounded-2xl px-6 py-6 text-white">
+          <!-- Comments Header -->
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-2xl font-bold text-cyan-400 flex items-center gap-2">
+              <i class='bx bx-message-square-dots text-3xl'></i>
+              Reviews & Comments
+              <span id="commentsCount" class="text-lg text-cyan-300 font-normal">
+                (0)
+              </span>
+            </h3>
+            
+            <!-- Filter Dropdown -->
+            <div class="relative">
+              <select id="commentFilter" class="bg-[#232445] border border-cyan-600/30 text-white px-4 py-2 rounded-lg text-sm focus:outline-none focus:border-cyan-400">
+                <option value="all">All Comments</option>
+                <option value="5">⭐⭐⭐⭐⭐ (5 stars)</option>
+                <option value="4">⭐⭐⭐⭐ (4 stars)</option>
+                <option value="3">⭐⭐⭐ (3 stars)</option>
+                <option value="2">⭐⭐ (2 stars)</option>
+                <option value="1">⭐ (1 star)</option>
+                <option value="no-rating">No Rating</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Add Comment Form -->
+          <div id="addCommentForm" class="mb-6 p-4 bg-[#232445] rounded-lg border border-cyan-600/20">
+            <h4 class="text-lg font-semibold text-cyan-400 mb-3">Write a Review</h4>
+            
+            <!-- Star Rating Input -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-cyan-300 mb-2">Your Rating (Optional)</label>
+              <div id="commentStarInput" class="flex gap-1 text-2xl mb-2">
+                <!-- Stars will be rendered here -->
+              </div>
+              <p class="text-xs text-cyan-200/70">Click stars to rate this game</p>
+            </div>
+
+            <!-- Comment Text -->
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-cyan-300 mb-2">Your Comment</label>
+              <textarea 
+                id="commentText" 
+                placeholder="Share your thoughts about this game..."
+                class="comment-textarea w-full"
+                maxlength="1000"
+              ></textarea>
+              <div class="flex justify-between text-xs text-cyan-200/70 mt-1">
+                <span>Be respectful and constructive</span>
+                <span id="commentCharCount">0/1000</span>
+              </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex gap-3">
+              <button 
+                id="submitComment" 
+                class="bg-gradient-to-r from-cyan-400 to-indigo-500 text-black font-bold px-6 py-2 rounded-lg hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled
+              >
+                <i class='bx bx-send mr-2'></i>
+                Post Review
+              </button>
+              <button 
+                id="cancelComment" 
+                class="bg-white/10 text-white px-6 py-2 rounded-lg hover:bg-red-500/20 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+
+          <!-- Comments List -->
+          <div id="commentsList" class="space-y-4">
+            <!-- Comments will be rendered here -->
+            <div id="commentsLoader" class="text-center py-8 hidden">
+              <div class="inline-block w-6 h-6 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+              <p class="text-cyan-300 mt-2">Loading comments...</p>
+            </div>
+            <div id="noComments" class="text-center py-8 text-cyan-300/70">
+              <i class='bx bx-message-square text-4xl mb-2 block'></i>
+              <p>No comments yet. Be the first to share your thoughts!</p>
+            </div>
+          </div>
+
+          <!-- Load More Button -->
+          <div id="loadMoreComments" class="text-center mt-6 hidden">
+            <button class="bg-white/10 text-cyan-300 px-6 py-2 rounded-lg hover:bg-cyan-500/20 transition">
+              Load More Comments
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reply Modal -->
+      <div id="replyModal" class="hidden fixed inset-0 z-[10001] bg-black/70 flex items-center justify-center">
+        <div class="bg-[#232445] rounded-xl p-6 max-w-lg w-full mx-4 shadow-2xl border border-cyan-400/20 relative">
+          <button onclick="closeReplyModal()" class="absolute top-3 right-4 text-white/70 hover:text-pink-400 text-xl">
+            <i class='bx bx-x'></i>
+          </button>
+          <h3 class="text-xl font-bold mb-4 text-cyan-400">Reply to Comment</h3>
+          
+          <div id="replyToComment" class="mb-4 p-3 bg-[#181b2a] rounded-lg border border-cyan-600/20">
+            <!-- Original comment will be shown here -->
+          </div>
+          
+          <textarea 
+            id="replyText" 
+            placeholder="Write your reply..."
+            class="comment-textarea w-full mb-4"
+            maxlength="500"
+          ></textarea>
+          <div class="text-xs text-cyan-200/70 mb-4 text-right">
+            <span id="replyCharCount">0/500</span>
+          </div>
+          
+          <div class="flex gap-3">
+            <button 
+              id="submitReply" 
+              class="bg-gradient-to-r from-cyan-400 to-indigo-500 text-black font-bold px-4 py-2 rounded-lg hover:scale-105 transition-transform disabled:opacity-50"
+              disabled
+            >
+              Post Reply
+            </button>
+            <button 
+              onclick="closeReplyModal()" 
+              class="bg-white/10 text-white px-4 py-2 rounded-lg hover:bg-red-500/20 transition"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reaction Picker (will be positioned dynamically) -->
+      <div id="reactionPicker" class="hidden reaction-picker">
+        <emoji-picker></emoji-picker>
+      </div>
+
       <div id="tagGamesListModal" class="hidden fixed inset-0 z-[10000] bg-black/70 flex items-center justify-center">
         <div class="bg-[#232445] rounded-xl p-8 max-w-lg w-full shadow-2xl border border-cyan-400/20 relative">
           <button onclick="closeTagGamesModal()" class="absolute top-3 right-4 text-white/70 hover:text-pink-400 text-xl"><i class='bx bx-x'></i></button>
@@ -529,11 +741,536 @@
       `;
     }
 
+    // --- COMMENT SYSTEM ---
+    let commentsData = {
+      comments: [],
+      loading: false,
+      currentFilter: 'all',
+      currentCommentRating: 0,
+      currentReplyingTo: null,
+      lastVisible: null,
+      commentsPerPage: 10
+    };
+
+    // Initialize comment star rating input
+    function initCommentStarInput() {
+      const container = document.getElementById('commentStarInput');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      for (let i = 1; i <= 5; i++) {
+        const star = document.createElement('span');
+        star.textContent = '★';
+        star.className = 'cursor-pointer transition-colors duration-150 select-none ' + 
+          (i <= commentsData.currentCommentRating ? 'text-yellow-400' : 'text-slate-600');
+        
+        star.addEventListener('mouseenter', () => {
+          for (let j = 0; j < 5; j++) {
+            container.children[j].classList.toggle('text-yellow-400', j < i);
+            container.children[j].classList.toggle('text-slate-600', j >= i);
+          }
+        });
+        
+        star.addEventListener('mouseleave', () => {
+          for (let j = 0; j < 5; j++) {
+            container.children[j].classList.toggle('text-yellow-400', j < commentsData.currentCommentRating);
+            container.children[j].classList.toggle('text-slate-600', j >= commentsData.currentCommentRating);
+          }
+        });
+        
+        star.addEventListener('click', () => {
+          commentsData.currentCommentRating = commentsData.currentCommentRating === i ? 0 : i;
+          updateCommentStarInput();
+        });
+        
+        container.appendChild(star);
+      }
+    }
+
+    function updateCommentStarInput() {
+      const container = document.getElementById('commentStarInput');
+      if (!container) return;
+      
+      for (let j = 0; j < 5; j++) {
+        container.children[j].classList.toggle('text-yellow-400', j < commentsData.currentCommentRating);
+        container.children[j].classList.toggle('text-slate-600', j >= commentsData.currentCommentRating);
+      }
+    }
+
+    // Load comments from Firebase
+    async function loadComments(gameId, loadMore = false) {
+      if (!gameId) return;
+      
+      commentsData.loading = true;
+      updateCommentsUI();
+      
+      try {
+        let query = db.collection("games").doc(gameId).collection("comments")
+          .orderBy("createdAt", "desc")
+          .limit(commentsData.commentsPerPage);
+        
+        if (loadMore && commentsData.lastVisible) {
+          query = query.startAfter(commentsData.lastVisible);
+        }
+        
+        const snapshot = await query.get();
+        
+        if (loadMore) {
+          snapshot.forEach(doc => {
+            commentsData.comments.push({ id: doc.id, ...doc.data() });
+          });
+        } else {
+          commentsData.comments = [];
+          snapshot.forEach(doc => {
+            commentsData.comments.push({ id: doc.id, ...doc.data() });
+          });
+        }
+        
+        commentsData.lastVisible = snapshot.docs[snapshot.docs.length - 1] || null;
+        
+        // Load replies for each comment
+        for (let comment of commentsData.comments) {
+          if (!comment.replies) {
+            const repliesSnapshot = await db.collection("games").doc(gameId)
+              .collection("comments").doc(comment.id)
+              .collection("replies")
+              .orderBy("createdAt", "asc")
+              .get();
+            
+            comment.replies = [];
+            repliesSnapshot.forEach(replyDoc => {
+              comment.replies.push({ id: replyDoc.id, ...replyDoc.data() });
+            });
+          }
+        }
+        
+      } catch (error) {
+        console.error("Error loading comments:", error);
+      }
+      
+      commentsData.loading = false;
+      updateCommentsUI();
+    }
+
+    // Submit new comment
+    async function submitComment() {
+      const user = firebase.auth().currentUser;
+      const text = document.getElementById('commentText').value.trim();
+      
+      if (!user) {
+        alert('Please sign in to comment');
+        return;
+      }
+      
+      if (!text) {
+        alert('Please enter a comment');
+        return;
+      }
+      
+      if (!currentGameId) {
+        alert('Game not loaded');
+        return;
+      }
+      
+      try {
+        const commentData = {
+          text: text,
+          rating: commentsData.currentCommentRating || null,
+          authorId: user.uid,
+          authorName: user.displayName,
+          authorPhoto: user.photoURL,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          reactions: {},
+          reactionCounts: {}
+        };
+        
+        const docRef = await db.collection("games").doc(currentGameId)
+          .collection("comments").add(commentData);
+        
+        // Reset form
+        document.getElementById('commentText').value = '';
+        commentsData.currentCommentRating = 0;
+        updateCommentStarInput();
+        updateSubmitButtonState();
+        
+        // Reload comments
+        await loadComments(currentGameId);
+        
+      } catch (error) {
+        console.error("Error submitting comment:", error);
+        alert('Failed to submit comment. Please try again.');
+      }
+    }
+
+    // Submit reply
+    async function submitReply() {
+      const user = firebase.auth().currentUser;
+      const text = document.getElementById('replyText').value.trim();
+      
+      if (!user || !text || !commentsData.currentReplyingTo) {
+        return;
+      }
+      
+      try {
+        const replyData = {
+          text: text,
+          authorId: user.uid,
+          authorName: user.displayName,
+          authorPhoto: user.photoURL,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          reactions: {},
+          reactionCounts: {}
+        };
+        
+        await db.collection("games").doc(currentGameId)
+          .collection("comments").doc(commentsData.currentReplyingTo)
+          .collection("replies").add(replyData);
+        
+        closeReplyModal();
+        await loadComments(currentGameId);
+        
+      } catch (error) {
+        console.error("Error submitting reply:", error);
+        alert('Failed to submit reply. Please try again.');
+      }
+    }
+
+    // Add or remove reaction
+    async function toggleReaction(commentId, emoji, isReply = false, replyId = null) {
+      const user = firebase.auth().currentUser;
+      if (!user) return;
+      
+      try {
+        let docPath = `games/${currentGameId}/comments/${commentId}`;
+        if (isReply) {
+          docPath += `/replies/${replyId}`;
+        }
+        
+        const docRef = db.doc(docPath);
+        const doc = await docRef.get();
+        const data = doc.data();
+        
+        const reactions = data.reactions || {};
+        const reactionCounts = data.reactionCounts || {};
+        
+        // Toggle user's reaction
+        if (reactions[user.uid] === emoji) {
+          // Remove reaction
+          delete reactions[user.uid];
+          reactionCounts[emoji] = Math.max(0, (reactionCounts[emoji] || 1) - 1);
+          if (reactionCounts[emoji] === 0) {
+            delete reactionCounts[emoji];
+          }
+        } else {
+          // Add/change reaction
+          const oldEmoji = reactions[user.uid];
+          if (oldEmoji) {
+            reactionCounts[oldEmoji] = Math.max(0, (reactionCounts[oldEmoji] || 1) - 1);
+            if (reactionCounts[oldEmoji] === 0) {
+              delete reactionCounts[oldEmoji];
+            }
+          }
+          reactions[user.uid] = emoji;
+          reactionCounts[emoji] = (reactionCounts[emoji] || 0) + 1;
+        }
+        
+        await docRef.update({ reactions, reactionCounts });
+        await loadComments(currentGameId);
+        
+      } catch (error) {
+        console.error("Error toggling reaction:", error);
+      }
+    }
+
+    // Render comments
+    function renderComments() {
+      const container = document.getElementById('commentsList');
+      const noComments = document.getElementById('noComments');
+      const loader = document.getElementById('commentsLoader');
+      const loadMore = document.getElementById('loadMoreComments');
+      
+      if (commentsData.loading) {
+        loader.classList.remove('hidden');
+        noComments.classList.add('hidden');
+        return;
+      }
+      
+      loader.classList.add('hidden');
+      
+      const filteredComments = filterComments(commentsData.comments);
+      
+      if (filteredComments.length === 0) {
+        noComments.classList.remove('hidden');
+        container.innerHTML = '';
+        loadMore.classList.add('hidden');
+        return;
+      }
+      
+      noComments.classList.add('hidden');
+      
+      container.innerHTML = filteredComments.map(comment => renderComment(comment)).join('');
+      
+      // Show load more if there might be more comments
+      if (commentsData.lastVisible && filteredComments.length >= commentsData.commentsPerPage) {
+        loadMore.classList.remove('hidden');
+      } else {
+        loadMore.classList.add('hidden');
+      }
+      
+      updateCommentsCount();
+    }
+
+    function renderComment(comment) {
+      const user = firebase.auth().currentUser;
+      const reactions = Object.entries(comment.reactionCounts || {})
+        .map(([emoji, count]) => {
+          const userReacted = user && comment.reactions && comment.reactions[user.uid] === emoji;
+          return `
+            <button 
+              onclick="toggleReaction('${comment.id}', '${emoji}')"
+              class="reaction-button ${userReacted ? 'reacted' : ''}"
+            >
+              ${emoji} ${count}
+            </button>
+          `;
+        }).join('');
+      
+      const replies = (comment.replies || [])
+        .map(reply => renderReply(reply, comment.id))
+        .join('');
+      
+      const stars = comment.rating ? 
+        '★'.repeat(comment.rating) + '☆'.repeat(5 - comment.rating) : '';
+      
+      return `
+        <div class="comment-item p-4 bg-[#232445] rounded-lg border border-cyan-600/20">
+          <div class="flex items-start gap-3">
+            <img src="${comment.authorPhoto || '/default-avatar.png'}" 
+                 class="w-10 h-10 rounded-full flex-shrink-0" 
+                 alt="${comment.authorName}">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="font-semibold text-cyan-300">${comment.authorName}</span>
+                ${comment.rating ? `<span class="comment-stars text-sm">${stars}</span>` : ''}
+                <span class="text-xs text-cyan-200/60">
+                  ${comment.createdAt ? new Date(comment.createdAt.toDate()).toLocaleDateString() : 'Just now'}
+                </span>
+              </div>
+              
+              <p class="text-white/90 mb-3 leading-relaxed">${escapeHtml(comment.text)}</p>
+              
+              <div class="flex items-center gap-3 flex-wrap">
+                <div class="flex gap-1">
+                  ${reactions}
+                </div>
+                
+                <button 
+                  onclick="showReactionPicker('${comment.id}', event)"
+                  class="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1"
+                  title="Add reaction"
+                >
+                  <i class='bx bx-smile'></i>
+                  React
+                </button>
+                
+                <button 
+                  onclick="openReplyModal('${comment.id}')"
+                  class="text-cyan-400 hover:text-cyan-300 text-sm flex items-center gap-1"
+                  title="Reply to comment"
+                >
+                  <i class='bx bx-reply'></i>
+                  Reply
+                </button>
+              </div>
+              
+              ${replies ? `
+                <div class="mt-4 space-y-3">
+                  ${replies}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderReply(reply, commentId) {
+      const user = firebase.auth().currentUser;
+      const reactions = Object.entries(reply.reactionCounts || {})
+        .map(([emoji, count]) => {
+          const userReacted = user && reply.reactions && reply.reactions[user.uid] === emoji;
+          return `
+            <button 
+              onclick="toggleReaction('${commentId}', '${emoji}', true, '${reply.id}')"
+              class="reaction-button ${userReacted ? 'reacted' : ''}"
+            >
+              ${emoji} ${count}
+            </button>
+          `;
+        }).join('');
+      
+      return `
+        <div class="reply-item p-3 bg-[#181b2a] rounded-lg">
+          <div class="flex items-start gap-3">
+            <img src="${reply.authorPhoto || '/default-avatar.png'}" 
+                 class="w-8 h-8 rounded-full flex-shrink-0" 
+                 alt="${reply.authorName}">
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-2">
+                <span class="font-medium text-cyan-300 text-sm">${reply.authorName}</span>
+                <span class="text-xs text-cyan-200/60">
+                  ${reply.createdAt ? new Date(reply.createdAt.toDate()).toLocaleDateString() : 'Just now'}
+                </span>
+              </div>
+              
+              <p class="text-white/90 text-sm mb-2 leading-relaxed">${escapeHtml(reply.text)}</p>
+              
+              <div class="flex items-center gap-3">
+                <div class="flex gap-1">
+                  ${reactions}
+                </div>
+                
+                <button 
+                  onclick="showReactionPicker('${commentId}', event, true, '${reply.id}')"
+                  class="text-cyan-400 hover:text-cyan-300 text-xs flex items-center gap-1"
+                  title="Add reaction"
+                >
+                  <i class='bx bx-smile'></i>
+                  React
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function filterComments(comments) {
+      if (commentsData.currentFilter === 'all') {
+        return comments;
+      }
+      
+      if (commentsData.currentFilter === 'no-rating') {
+        return comments.filter(c => !c.rating);
+      }
+      
+      const rating = parseInt(commentsData.currentFilter);
+      return comments.filter(c => c.rating === rating);
+    }
+
+    function updateCommentsUI() {
+      renderComments();
+    }
+
+    function updateCommentsCount() {
+      const count = filterComments(commentsData.comments).length;
+      document.getElementById('commentsCount').textContent = `(${count})`;
+    }
+
+    function updateSubmitButtonState() {
+      const text = document.getElementById('commentText').value.trim();
+      const button = document.getElementById('submitComment');
+      button.disabled = !text;
+    }
+
+    function updateReplyButtonState() {
+      const text = document.getElementById('replyText').value.trim();
+      const button = document.getElementById('submitReply');
+      button.disabled = !text;
+    }
+
+    // Modal functions
+    function openReplyModal(commentId) {
+      const comment = commentsData.comments.find(c => c.id === commentId);
+      if (!comment) return;
+      
+      commentsData.currentReplyingTo = commentId;
+      const modal = document.getElementById('replyModal');
+      const replyTo = document.getElementById('replyToComment');
+      
+      const stars = comment.rating ? 
+        '★'.repeat(comment.rating) + '☆'.repeat(5 - comment.rating) : '';
+      
+      replyTo.innerHTML = `
+        <div class="flex items-start gap-3">
+          <img src="${comment.authorPhoto || '/default-avatar.png'}" 
+               class="w-8 h-8 rounded-full flex-shrink-0" 
+               alt="${comment.authorName}">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-medium text-cyan-300 text-sm">${comment.authorName}</span>
+              ${comment.rating ? `<span class="comment-stars text-xs">${stars}</span>` : ''}
+            </div>
+            <p class="text-white/80 text-sm">${escapeHtml(comment.text.slice(0, 100))}${comment.text.length > 100 ? '...' : ''}</p>
+          </div>
+        </div>
+      `;
+      
+      modal.classList.remove('hidden');
+      document.getElementById('replyText').focus();
+    }
+
+    function closeReplyModal() {
+      document.getElementById('replyModal').classList.add('hidden');
+      document.getElementById('replyText').value = '';
+      commentsData.currentReplyingTo = null;
+      updateReplyButtonState();
+    }
+
+    // Reaction picker
+    function showReactionPicker(commentId, event, isReply = false, replyId = null) {
+      event.stopPropagation();
+      const picker = document.getElementById('reactionPicker');
+      const emojiPicker = picker.querySelector('emoji-picker');
+      
+      // Position picker near the clicked button
+      const rect = event.target.getBoundingClientRect();
+      picker.style.position = 'fixed';
+      picker.style.left = rect.left + 'px';
+      picker.style.top = (rect.bottom + 10) + 'px';
+      picker.style.zIndex = '10002';
+      
+      picker.classList.remove('hidden');
+      
+      // Handle emoji selection
+      const handleEmojiClick = (e) => {
+        toggleReaction(commentId, e.detail.unicode, isReply, replyId);
+        hideReactionPicker();
+      };
+      
+      emojiPicker.addEventListener('emoji-click', handleEmojiClick, { once: true });
+    }
+
+    function hideReactionPicker() {
+      document.getElementById('reactionPicker').classList.add('hidden');
+    }
+
+    // Utility functions
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Expose modal controls for tag modal
+    window.openTagGamesModal = openTagGamesModal;
+    window.closeTagGamesModal = closeTagGamesModal;
+    window.googleSignIn = googleSignIn;
+    window.signOut = signOut;
+
+    // Expose comment system functions
+    window.openReplyModal = openReplyModal;
+    window.closeReplyModal = closeReplyModal;
+    window.showReactionPicker = showReactionPicker;
+    window.toggleReaction = toggleReaction;
+
+    // Re-initialize the main document loading logic
     document.addEventListener('DOMContentLoaded', async () => {
       showPreloader();
       document.getElementById('gameFrameContainer').classList.add('hidden');
       document.getElementById('gameInfoHolder').classList.add('hidden');
       document.getElementById('loginScreen').classList.remove('hidden');
+      
       auth.onAuthStateChanged(async (user) => {
         renderUserSection(user);
         if (!user) {
@@ -543,24 +1280,29 @@
           document.getElementById('gameInfoHolder').classList.add('hidden');
           return;
         }
+        
         await loadGamesData();
         currentGameId = getGameIdFromURL();
         window.currentGameId = currentGameId;
         currentGame = gamesData.find(g => g.id == currentGameId || String(g.id) == currentGameId);
+        
         if (!currentGame) {
           hidePreloader();
           document.getElementById('gameInfoHolder').innerHTML = `<div class="text-center p-12 text-red-400">Game not found.</div>`;
           document.getElementById('gameInfoHolder').classList.remove('hidden');
           return;
         }
+        
         document.getElementById('loginScreen').classList.add('hidden');
         document.getElementById('gameInfoHolder').classList.remove('hidden');
         document.getElementById('gameCoverImg').src = currentGame.image;
         document.getElementById('gameTitleDisplay').textContent = currentGame.title || "";
         document.getElementById('gameFrameDesc').textContent = currentGame.description;
         document.getElementById('gameCategoryTag').textContent = currentGame.category || '';
+        
         if (currentGame.featured) document.getElementById('gameFeaturedTag').classList.remove('hidden');
         else document.getElementById('gameFeaturedTag').classList.add('hidden');
+        
         await loadStarRating(currentGameId);
         renderGameInfoBox(currentGame, "gameInfoTable");
 
@@ -568,29 +1310,38 @@
           showPreloader();
           document.getElementById('gameInfoHolder').classList.add('hidden');
           document.getElementById('gameFrameContainer').classList.remove('hidden');
+          
           await window.loadProxiedGameIframe();
           document.getElementById('gameFrameEmbed').onload = hidePreloader;
+          
           document.getElementById('gameTitleDisplayFrame').textContent = currentGame.title || "";
           renderStarRatingUI("Frame");
           renderTagsAreaFrame(currentGame);
           renderCategoryGamesCountFrame(currentGame);
           renderGameInfoBox(currentGame, "gameInfoTableFrame");
+          
+          // Load comments when game starts
+          await loadComments(currentGameId);
+          
           let lists = await getUserGameLists(user.uid);
           setButtonActive(document.getElementById('likeBtn'), lists.likedGames?.includes(currentGameId));
           setButtonActive(document.getElementById('favBtn'), lists.favoriteGames?.includes(currentGameId), 'bg-pink-600/80');
           setButtonActive(document.getElementById('playlistBtn'), lists.playlist?.includes(currentGameId), 'bg-yellow-400/80');
+          
           document.getElementById('likeBtn').onclick = async () => {
             const isLiked = lists.likedGames?.includes(currentGameId);
             await updateUserArray(user.uid, 'likedGames', currentGameId, !isLiked);
             lists = await getUserGameLists(user.uid);
             setButtonActive(document.getElementById('likeBtn'), lists.likedGames?.includes(currentGameId));
           };
+          
           document.getElementById('favBtn').onclick = async () => {
             const isFav = lists.favoriteGames?.includes(currentGameId);
             await updateUserArray(user.uid, 'favoriteGames', currentGameId, !isFav);
             lists = await getUserGameLists(user.uid);
             setButtonActive(document.getElementById('favBtn'), lists.favoriteGames?.includes(currentGameId), 'bg-pink-600/80');
           };
+          
           document.getElementById('dislikeBtn').onclick = async () => {
             const isLiked = lists.likedGames?.includes(currentGameId);
             if (isLiked) {
@@ -600,36 +1351,42 @@
             lists = await getUserGameLists(user.uid);
             setButtonActive(document.getElementById('likeBtn'), lists.likedGames?.includes(currentGameId));
           };
+          
           document.getElementById('shareBtn').onclick = () => {
             const url = `${window.location.origin}/play.html?id=${currentGameId}`;
             navigator.clipboard.writeText(url);
             alert('Game link copied!');
           };
+          
           document.getElementById('playlistBtn').onclick = async () => {
             const inPlaylist = lists.playlist?.includes(currentGameId);
             await updateUserArray(user.uid, 'playlist', currentGameId, !inPlaylist);
             lists = await getUserGameLists(user.uid);
             setButtonActive(document.getElementById('playlistBtn'), lists.playlist?.includes(currentGameId), 'bg-yellow-400/80');
           };
+          
           document.getElementById('fullscreenBtn').onclick = (e) => {
             e.preventDefault();
             const iframe = document.getElementById('gameFrameEmbed');
             requestFullScreen(iframe);
           };
+          
           document.getElementById('fullscreenBtnBottom').onclick = (e) => {
             e.preventDefault();
             const iframe = document.getElementById('gameFrameEmbed');
             requestFullScreen(iframe);
           };
         };
+        
         hidePreloader();
       });
     });
 
-    
+    // User functions
     async function getUserDocRef(uid) {
       return db.collection('users').doc(uid);
     }
+    
     async function updateUserArray(uid, field, gameId, add = true) {
       const ref = await getUserDocRef(uid);
       if (add) {
@@ -638,20 +1395,90 @@
         await ref.set({ [field]: firebase.firestore.FieldValue.arrayRemove(gameId) }, { merge: true });
       }
     }
+    
     async function getUserGameLists(uid) {
       const doc = await db.collection('users').doc(uid).get();
       return doc.exists ? doc.data() : { likedGames: [], favoriteGames: [], playlist: [], history: [] };
     }
+    
     async function updateGameHistory(uid, gameId) {
       const ref = await getUserDocRef(uid);
       await ref.set({ history: firebase.firestore.FieldValue.arrayUnion(gameId) }, { merge: true });
     }
 
-    // Expose modal controls for tag modal
-    window.openTagGamesModal = openTagGamesModal;
-    window.closeTagGamesModal = closeTagGamesModal;
-    window.googleSignIn = googleSignIn;
-    window.signOut = signOut;
+    // Initialize comment form event listeners after DOM is ready
+    setTimeout(() => {
+      // Comment form events
+      const commentText = document.getElementById('commentText');
+      const commentCharCount = document.getElementById('commentCharCount');
+      const submitCommentBtn = document.getElementById('submitComment');
+      const cancelComment = document.getElementById('cancelComment');
+      const commentFilter = document.getElementById('commentFilter');
+      
+      if (commentText) {
+        commentText.addEventListener('input', () => {
+          const length = commentText.value.length;
+          if (commentCharCount) commentCharCount.textContent = `${length}/1000`;
+          updateSubmitButtonState();
+        });
+      }
+      
+      if (submitCommentBtn) {
+        submitCommentBtn.addEventListener('click', submitComment);
+      }
+      
+      if (cancelComment) {
+        cancelComment.addEventListener('click', () => {
+          if (commentText) commentText.value = '';
+          commentsData.currentCommentRating = 0;
+          updateCommentStarInput();
+          updateSubmitButtonState();
+        });
+      }
+      
+      if (commentFilter) {
+        commentFilter.addEventListener('change', (e) => {
+          commentsData.currentFilter = e.target.value;
+          updateCommentsUI();
+        });
+      }
+      
+      // Reply form events
+      const replyText = document.getElementById('replyText');
+      const replyCharCount = document.getElementById('replyCharCount');
+      const submitReplyBtn = document.getElementById('submitReply');
+      
+      if (replyText) {
+        replyText.addEventListener('input', () => {
+          const length = replyText.value.length;
+          if (replyCharCount) replyCharCount.textContent = `${length}/500`;
+          updateReplyButtonState();
+        });
+      }
+      
+      if (submitReplyBtn) {
+        submitReplyBtn.addEventListener('click', submitReply);
+      }
+      
+      // Load more comments
+      const loadMoreBtn = document.querySelector('#loadMoreComments button');
+      if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', () => {
+          loadComments(currentGameId, true);
+        });
+      }
+      
+      // Hide reaction picker when clicking outside
+      document.addEventListener('click', (e) => {
+        const picker = document.getElementById('reactionPicker');
+        if (picker && !picker.contains(e.target) && !picker.classList.contains('hidden')) {
+          hideReactionPicker();
+        }
+      });
+      
+      // Initialize comment star input
+      initCommentStarInput();
+    }, 1000);
   </script>
 </body>
 </html>
