@@ -938,7 +938,10 @@
     // Add or remove reaction
     async function toggleReaction(commentId, emoji, isReply = false, replyId = null) {
       const user = firebase.auth().currentUser;
-      if (!user) return;
+      if (!user || !currentGameId) {
+        console.log('User not authenticated or game not loaded');
+        return;
+      }
       
       try {
         let docPath = `games/${currentGameId}/comments/${commentId}`;
@@ -948,8 +951,13 @@
         
         const docRef = db.doc(docPath);
         const doc = await docRef.get();
-        const data = doc.data();
         
+        if (!doc.exists) {
+          console.error('Document does not exist:', docPath);
+          return;
+        }
+        
+        const data = doc.data();
         const reactions = data.reactions || {};
         const reactionCounts = data.reactionCounts || {};
         
@@ -979,8 +987,104 @@
         
       } catch (error) {
         console.error("Error toggling reaction:", error);
+        alert('Failed to add reaction. Please try again.');
       }
     }
+
+    // Modal functions
+    function openReplyModal(commentId) {
+      const comment = commentsData.comments.find(c => c.id === commentId);
+      if (!comment) return;
+      
+      commentsData.currentReplyingTo = commentId;
+      const modal = document.getElementById('replyModal');
+      const replyTo = document.getElementById('replyToComment');
+      
+      const stars = comment.rating ? 
+        '★'.repeat(comment.rating) + '☆'.repeat(5 - comment.rating) : '';
+      
+      replyTo.innerHTML = `
+        <div class="flex items-start gap-3">
+          <img src="${comment.authorPhoto || '/default-avatar.png'}" 
+               class="w-8 h-8 rounded-full flex-shrink-0" 
+               alt="${comment.authorName}">
+          <div>
+            <div class="flex items-center gap-2 mb-1">
+              <span class="font-medium text-cyan-300 text-sm">${comment.authorName}</span>
+              ${comment.rating ? `<span class="comment-stars text-xs">${stars}</span>` : ''}
+            </div>
+            <p class="text-white/80 text-sm">${escapeHtml(comment.text.slice(0, 100))}${comment.text.length > 100 ? '...' : ''}</p>
+          </div>
+        </div>
+      `;
+      
+      modal.classList.remove('hidden');
+      document.getElementById('replyText').focus();
+    }
+
+    function closeReplyModal() {
+      document.getElementById('replyModal').classList.add('hidden');
+      document.getElementById('replyText').value = '';
+      commentsData.currentReplyingTo = null;
+      updateReplyButtonState();
+    }
+
+    // Reaction picker
+    function showReactionPicker(commentId, event, isReply = false, replyId = null) {
+      event.stopPropagation();
+      const picker = document.getElementById('reactionPicker');
+      const emojiPicker = picker.querySelector('emoji-picker');
+      
+      // Position picker near the clicked button
+      const rect = event.target.closest('button').getBoundingClientRect();
+      picker.style.position = 'fixed';
+      picker.style.left = rect.left + 'px';
+      picker.style.top = (rect.bottom + 10) + 'px';
+      picker.style.zIndex = '10002';
+      
+      picker.classList.remove('hidden');
+      
+      // Remove any existing listeners
+      const oldPicker = picker.querySelector('emoji-picker');
+      if (oldPicker) {
+        oldPicker.remove();
+      }
+      
+      // Create new emoji picker
+      const newEmojiPicker = document.createElement('emoji-picker');
+      picker.appendChild(newEmojiPicker);
+      
+      // Handle emoji selection
+      const handleEmojiClick = (e) => {
+        toggleReaction(commentId, e.detail.unicode, isReply, replyId);
+        hideReactionPicker();
+      };
+      
+      newEmojiPicker.addEventListener('emoji-click', handleEmojiClick, { once: true });
+    }
+
+    function hideReactionPicker() {
+      const picker = document.getElementById('reactionPicker');
+      if (picker) {
+        picker.classList.add('hidden');
+      }
+    }
+
+    // Utility functions
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Expose all functions to global scope immediately
+    window.openReplyModal = openReplyModal;
+    window.closeReplyModal = closeReplyModal;
+    window.showReactionPicker = showReactionPicker;
+    window.toggleReaction = toggleReaction;
+    window.submitComment = submitComment;
+    window.submitReply = submitReply;
+    window.loadComments = loadComments;
 
     // Render comments
     function renderComments() {
@@ -990,31 +1094,35 @@
       const loadMore = document.getElementById('loadMoreComments');
       
       if (commentsData.loading) {
-        loader.classList.remove('hidden');
-        noComments.classList.add('hidden');
+        if (loader) loader.classList.remove('hidden');
+        if (noComments) noComments.classList.add('hidden');
         return;
       }
       
-      loader.classList.add('hidden');
+      if (loader) loader.classList.add('hidden');
       
       const filteredComments = filterComments(commentsData.comments);
       
       if (filteredComments.length === 0) {
-        noComments.classList.remove('hidden');
-        container.innerHTML = '';
-        loadMore.classList.add('hidden');
+        if (noComments) noComments.classList.remove('hidden');
+        if (container) container.innerHTML = '';
+        if (loadMore) loadMore.classList.add('hidden');
         return;
       }
       
-      noComments.classList.add('hidden');
+      if (noComments) noComments.classList.add('hidden');
       
-      container.innerHTML = filteredComments.map(comment => renderComment(comment)).join('');
+      if (container) {
+        container.innerHTML = filteredComments.map(comment => renderComment(comment)).join('');
+      }
       
       // Show load more if there might be more comments
-      if (commentsData.lastVisible && filteredComments.length >= commentsData.commentsPerPage) {
-        loadMore.classList.remove('hidden');
-      } else {
-        loadMore.classList.add('hidden');
+      if (loadMore) {
+        if (commentsData.lastVisible && filteredComments.length >= commentsData.commentsPerPage) {
+          loadMore.classList.remove('hidden');
+        } else {
+          loadMore.classList.add('hidden');
+        }
       }
       
       updateCommentsCount();
@@ -1164,92 +1272,26 @@
 
     function updateCommentsCount() {
       const count = filterComments(commentsData.comments).length;
-      document.getElementById('commentsCount').textContent = `(${count})`;
+      const countEl = document.getElementById('commentsCount');
+      if (countEl) {
+        countEl.textContent = `(${count})`;
+      }
     }
 
     function updateSubmitButtonState() {
-      const text = document.getElementById('commentText').value.trim();
+      const text = document.getElementById('commentText');
       const button = document.getElementById('submitComment');
-      button.disabled = !text;
+      if (text && button) {
+        button.disabled = !text.value.trim();
+      }
     }
 
     function updateReplyButtonState() {
-      const text = document.getElementById('replyText').value.trim();
+      const text = document.getElementById('replyText');
       const button = document.getElementById('submitReply');
-      button.disabled = !text;
-    }
-
-    // Modal functions
-    function openReplyModal(commentId) {
-      const comment = commentsData.comments.find(c => c.id === commentId);
-      if (!comment) return;
-      
-      commentsData.currentReplyingTo = commentId;
-      const modal = document.getElementById('replyModal');
-      const replyTo = document.getElementById('replyToComment');
-      
-      const stars = comment.rating ? 
-        '★'.repeat(comment.rating) + '☆'.repeat(5 - comment.rating) : '';
-      
-      replyTo.innerHTML = `
-        <div class="flex items-start gap-3">
-          <img src="${comment.authorPhoto || '/default-avatar.png'}" 
-               class="w-8 h-8 rounded-full flex-shrink-0" 
-               alt="${comment.authorName}">
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <span class="font-medium text-cyan-300 text-sm">${comment.authorName}</span>
-              ${comment.rating ? `<span class="comment-stars text-xs">${stars}</span>` : ''}
-            </div>
-            <p class="text-white/80 text-sm">${escapeHtml(comment.text.slice(0, 100))}${comment.text.length > 100 ? '...' : ''}</p>
-          </div>
-        </div>
-      `;
-      
-      modal.classList.remove('hidden');
-      document.getElementById('replyText').focus();
-    }
-
-    function closeReplyModal() {
-      document.getElementById('replyModal').classList.add('hidden');
-      document.getElementById('replyText').value = '';
-      commentsData.currentReplyingTo = null;
-      updateReplyButtonState();
-    }
-
-    // Reaction picker
-    function showReactionPicker(commentId, event, isReply = false, replyId = null) {
-      event.stopPropagation();
-      const picker = document.getElementById('reactionPicker');
-      const emojiPicker = picker.querySelector('emoji-picker');
-      
-      // Position picker near the clicked button
-      const rect = event.target.getBoundingClientRect();
-      picker.style.position = 'fixed';
-      picker.style.left = rect.left + 'px';
-      picker.style.top = (rect.bottom + 10) + 'px';
-      picker.style.zIndex = '10002';
-      
-      picker.classList.remove('hidden');
-      
-      // Handle emoji selection
-      const handleEmojiClick = (e) => {
-        toggleReaction(commentId, e.detail.unicode, isReply, replyId);
-        hideReactionPicker();
-      };
-      
-      emojiPicker.addEventListener('emoji-click', handleEmojiClick, { once: true });
-    }
-
-    function hideReactionPicker() {
-      document.getElementById('reactionPicker').classList.add('hidden');
-    }
-
-    // Utility functions
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
+      if (text && button) {
+        button.disabled = !text.value.trim();
+      }
     }
 
     // Expose modal controls for tag modal
@@ -1257,12 +1299,6 @@
     window.closeTagGamesModal = closeTagGamesModal;
     window.googleSignIn = googleSignIn;
     window.signOut = signOut;
-
-    // Expose comment system functions
-    window.openReplyModal = openReplyModal;
-    window.closeReplyModal = closeReplyModal;
-    window.showReactionPicker = showReactionPicker;
-    window.toggleReaction = toggleReaction;
 
     // Re-initialize the main document loading logic
     document.addEventListener('DOMContentLoaded', async () => {
@@ -1306,6 +1342,9 @@
         await loadStarRating(currentGameId);
         renderGameInfoBox(currentGame, "gameInfoTable");
 
+        // Initialize comment system early
+        initializeCommentSystem();
+
         document.getElementById('bigPlayBtn').onclick = async () => {
           showPreloader();
           document.getElementById('gameInfoHolder').classList.add('hidden');
@@ -1322,6 +1361,9 @@
           
           // Load comments when game starts
           await loadComments(currentGameId);
+          
+          // Initialize comment system event listeners
+          initializeCommentSystem();
           
           let lists = await getUserGameLists(user.uid);
           setButtonActive(document.getElementById('likeBtn'), lists.likedGames?.includes(currentGameId));
@@ -1407,7 +1449,7 @@
     }
 
     // Initialize comment form event listeners after DOM is ready
-    setTimeout(() => {
+    function setupCommentEventListeners() {
       // Comment form events
       const commentText = document.getElementById('commentText');
       const commentCharCount = document.getElementById('commentCharCount');
@@ -1478,7 +1520,13 @@
       
       // Initialize comment star input
       initCommentStarInput();
-    }, 1000);
+    }
+
+    // Setup event listeners when the game loads
+    function initializeCommentSystem() {
+      // Set up form event listeners with a slight delay to ensure DOM elements exist
+      setTimeout(setupCommentEventListeners, 100);
+    }
   </script>
 </body>
 </html>
